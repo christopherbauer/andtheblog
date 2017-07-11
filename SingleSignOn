@@ -1,0 +1,7 @@
+<h1>Things You Should Probably Know - SAML2.0</h1>
+
+<h2>Implementing SAML2.0</h2>
+	
+<section>
+  I was surprised to find very little information in the form of "Tutorials" for vendors looking to implement single sign on for their services. So this is a quick write up of the research/realization of SSO for my current position.
+</section>
