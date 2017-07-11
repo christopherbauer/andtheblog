@@ -1,0 +1,60 @@
+Since MVC first came out I've seen a lot of Stackoverflow questions that betrayed a fair amount of confusion over how selectlists are supposed to be created.
+
+Generating a <span class="class">SelectList</span> is a fairly straightforward concept. We take some list of selectable items that we want the user to choose on our form. We need a class that can generate a <span class="class">SelectList</span> from this list of selectable items. Knowing that we're going to be using a creational pattern, and assuming some foreknowledge that we deem a factory the best implementation, our interface would look like this:
+
+<div class="code">interface ISelectListFactory {
+    SelectList Create(IEnumerable&lt;ISelectable&gt; selectable);
+}</div>
+
+But what makes an object selectable? Generally it has some kind of key and display value pair associated with it. The key is what our underlying data store knows the value to be, while the display value should be a string that we display for the end user to choose from. These are not mutually exclusive ideas, but the interface for this object must be able to differentiate the two values if they happen to be different.
+
+<div class="code">interface ISelectable {
+     string GetText();
+     string GetValue();
+}</div>
+
+Why methods? I found that if I used a get and set named Id or Key that other developers would misunderstand the purpose of the <span class="interface">ISelectable</span> contract: you aren't creating a model on the back end that stores values in Key/Display, you want to provide a normalized access method to the underlying properties that are a "Key" or "Display". Implementations should provide the store for those values, the methods should not be used as get accessors by anyone except for the <span class="class">SelectListFactory</span> implementation.
+
+Now that we have a smart API for getting our <span class="class">SelectList</span>, we can actually formulate a plan for working with the <span class="class">SelectListFactory</span>!
+
+<div class="code">class SelectListFactory {
+     public SelectList Create(IEnumerable<ISelectable> selectable) {
+          var items = new List<SelectListItem>();
+          foreach (var selectable in selectables)
+          {
+               items.Add(new SelectListItem {
+                    Text = selectable.GetText(), 
+                    Value = selectable.GetValue()
+               });
+          }
+          return new SelectList(items, "Value", "Text");
+     }
+}</div>
+
+Our <span class="class">SelectListFactory</span> implementation now does the heavy lifting - it takes our list of selectable items and maps them to our "viewmodel" (which is actually just <span class="class">SelectListItem</span>). Now, I create a <span class="class">SelectList</span> in my factory, but it could just as easily be an SelectListItemFactory, I'd just rather encapsulate this functionality in one place. Now that we have an implementation of our <span class="class">SelectListFactory</span>, let's get our first selectable model generated!
+
+<div class="code">class MySelectableModel : ISelectable {
+     public int Id { get; set; }
+     public string Name { get; set; }
+     public string GetText()
+     {
+         return string.Format("{0} - {1}", Id, Name);
+     }
+
+     public string GetValue()
+     {
+         return Id.ToString();
+     }
+}</div>
+
+Alright! Now our model shows its own implementation details - since Id and Name are properties with setters, whatever data store provides me with <span class="class">MySelectableModel</span> must be assigning Id and Name. Now inheriting <span class="interface">ISelectable</span> forces us to conform to the <span class="interface">ISelectable</span> interface, and we implement GetValue as a simple direct return on the field Id. Meanwhile, GetText is implemented with businessy logic that formats the Id and Name as a single line with a dash between them. 
+
+There's plenty of reasons to go this far for this example - 
+
+<ol>
+<li>The <span class="interface">ISelectListFactory</span> interface is simple enough that it can be reused anywhere we need a <span class="class">SelectList</span>, presuming we understand how inheritance works</li>
+<li>The <span class="interface">ISelectable</span> interface is a simple abstraction that makes our intentions clear - if a model is going to be selectable, then it must provide implementations for the methods GetValue() and GetText().</li>
+<li>Everything here is easily testable - you can test the GetValue() and GetText() implementations, and you can easily write tests for the <span class="interface">ISelectListFactory</span> implementation itself and save yourself from repeated testing and generating the <span class="class">SelectList</span> in the back end over and over!</li>
+</ol>
+
+Next time I'll provide some base tests for our models so that you can maintain that elusive 100% code coverage on every line of your application!
